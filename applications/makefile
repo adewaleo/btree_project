@@ -10,31 +10,22 @@ CFLAGS = -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
 BUILDIR = ../build
 LIBRARYDIR = ../libraries
 
-OBJECTFILES = $(BUILDIR)/util.o $(BUILDIR)/relation_mem.o
-EXECFILE = $(BUILDIR)/range_query
+OBJECTFILES = $(BUILDIR)/relapps.o
 
 # dependency rules for nonfile targets 
-all: $(EXECFILE)
+all: fetchdeps $(OBJECTFILES) clean
 
-clean:
-	rm -f *.o
-
-$(EXECFILE): range_query.o $(OBJECTFILES)
-	$(MAKE) -C $(LIBRARYDIR)
-	$(CC) $(CFLAGS) range_query.o $(OBJECTFILES) -o $@
-
-range_query.o: range_query.c $(LIBRARYDIR)/relation.h $(LIBRARYDIR)/util.h
+fetchdeps:
 	cp $(LIBRARYDIR)/relation.h . 
 	cp $(LIBRARYDIR)/util.h .
-	$(CC) $(CFLAGS) -c $<
+
+clean: cleandeps
+	rm -f *.o
+
+cleandeps:
 	rm -f relation.h
 	rm -f util.h
 
-
-
-
-
-
-
-
-
+$(BUILDIR)/relapps.o: relapps.c relapps.h relation.h util.h
+	$(CC) $(CFLAGS) -c $<
+	mv relapps.o $(BUILDIR)

@@ -33,4 +33,29 @@ enum {MAX_TREE_DEPTH = 8};
 int UTIL_BinarySearch(int a[], int tgt, int lo, int hi);
 
 
+/* Grows the array of length currLength to desiredLength. 
+ * currLength must be greater than 0. If successful, returns the new array. 
+ * Else, returns NULL. */
+void** UTIL_ResizeArray(void** array, unsigned long currLength, 
+        unsigned long desiredLength);
+
+
+
+/* Conversion functions assume that longs are 8 bytes, write each byte of string
+ * into the unsigned long. Significant byte of ul corresponds to significant 
+ * bytes in string with least significant bytes 0 if string consists of
+ * less than 8 chars. */
+
+
+/* Convert an string str of at most 8 characters to an 8 byte unsigned long. 
+ * The string does not need to include the NUL byte is it is 8 characters long.
+ * Pads the unsigned long with zeros if necessary. The first character of the
+ * string is at the most significant position of the ul.
+ */
+unsigned long UTIL_StrToUl(const char* str);
+
+/* Convert an unsigned long to a string of 9 characters. The resulting string 
+ * is always terminated by a NUL byte. */
+char* UTIL_UlToStr(unsigned long ul);
+
 #endif /* UTIL_H */

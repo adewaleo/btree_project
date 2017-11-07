@@ -23,7 +23,3 @@ $(BUILDIR)/util.o: util.c util.h
 $(BUILDIR)/relation_mem.o: relation_mem.c relation.h util.h 
 	$(CC) $(CFLAGS) -c $<
 	mv relation_mem.o $(BUILDIR)
-
-
-
-

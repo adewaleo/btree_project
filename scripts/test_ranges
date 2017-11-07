@@ -1,0 +1,18 @@
+#!/bin/bash
+
+echo ""
+echo "Comparing output of c range query program and python range query program."
+
+diff <(./rangequery "$1" "$2" 0< "$3") <(python unique_range.py "$3" "$1" "$2")
+echo ""
+
+if [ "$?" = 0 ]
+then 
+    echo "Success, diff returned 0."
+else 
+    echo "Failure, diff did not return 0."
+fi
+
+
+time ./range_query_btree "$1" "$2" 0< "$3" >/dev/null
+time python unique_range.py "$3" "$1" "$2" >/dev/null

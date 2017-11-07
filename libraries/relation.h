@@ -58,7 +58,7 @@ unsigned long RL_GetKey(Cursor_T cursor);
 Bool RL_PutRecord(Cursor_T cursor, unsigned long key, const void* record);
 
 /* Move the cursor to the position of key in it's relation. 
- * Return True on Success; return FALSE if the record doesn't exist. 
+ * Return True on Success; return False if the record doesn't exist. 
  * Cursor will be Invalid if the Relation is empty.
  * Write to pRes, whether the key of the record at the current location of 
  * cursor is: less than (*pRes < 0), equal to (*pRes == 0), 

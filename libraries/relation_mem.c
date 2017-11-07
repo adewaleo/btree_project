@@ -158,6 +158,7 @@ void RL_FreeCursor(Cursor_T btCursor) {
 }
 
 Bool RL_CursorIsValid(Cursor_T cursor) {
+    assert(cursor != NULL);
     return cursor->isValid;
 }
 
