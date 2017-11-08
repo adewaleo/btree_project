@@ -181,11 +181,19 @@ Bool RL_PutRecord(Cursor_T cursor, unsigned long key, const void* record) {
 }
 
 Bool RL_MoveToRecord(Cursor_T cursor, unsigned long key, int *pRes) {
-    Bool success;
+    unsigned long lowest, highest;
     assert(cursor != NULL);
 
-    success = moveToRecord(cursor->relation->root, key, cursor, 0, pRes);
-    return success;
+
+    if (cursor->isValid) {
+        lowest = cursor->currNode->entries[0].key;
+        highest = cursor->currNode->entries[cursor->currNode->numKeys].key;
+        if (key >= lowest && key <= highest) {
+            return moveToRecord(cursor->currNode, key, cursor, cursor->level, pRes);
+        }
+    }
+        return moveToRecord(cursor->relation->root, key, cursor, 0, pRes);
+        
 }
 
 const void* RL_GetRecord(Cursor_T cursor) {

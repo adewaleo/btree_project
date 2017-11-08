@@ -4,8 +4,8 @@
 CC = gcc 
 
 CFLAGS = -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
- # CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
- # CFLAGS = -NDEBUG  -O -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
+# CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
+# CFLAGS = -NDEBUG  -O -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
 
 BUILDIR = ../build/
 OBJECTFILES = $(BUILDIR)/util.o $(BUILDIR)/relation_mem.o
