@@ -11,33 +11,32 @@ BUILDIR = ../build
 LIBRARYDIR = ../libraries
 APPSDIR = ../applications
 
-OBJECTFILES = $(BUILDIR)/util.o $(BUILDIR)/relation_mem.o \
-	$(BUILDIR)/relapps.o
-EXECFILE = $(BUILDIR)/rangequery
+OBJECTFILES = $(BUILDIR)/util.o $(BUILDIR)/relation_mem.o $(BUILDIR)/relapps.o
+RANGEEXEC = $(BUILDIR)/rangequery
+RELATIONTESTSEXEC = $(BUILDIR)/relationtests
 
 # dependency rules for nonfile targets 
-all: fetchdeps $(EXECFILE) clean
+all:  builddeps $(RANGEEXEC) $(RELATIONTESTSEXEC) clean
 
-fetchdeps:
-	cp $(LIBRARYDIR)/relation.h . 
-	cp $(LIBRARYDIR)/util.h .
-	cp $(APPSDIR)/relapps.h .
-
-	cp $(BUILDIR)/*.o .
-
-cleandeps:
-	rm -f relation.h
-	rm -f util.h
-	rm -f relapps.h
-
-clean: cleandeps
-	rm -f *.o
-
-$(EXECFILE): rangequeryclient.o $(OBJECTFILES)
+builddeps:
 	$(MAKE) -C $(LIBRARYDIR)
 	$(MAKE) -C $(APPSDIR)
-	$(CC) $(CFLAGS) rangequeryclient.o $(OBJECTFILES) -o $@
 
-rangequeryclient.o: rangequeryclient.c relation.h util.h relapps.h
+clean: 
+	rm -f *.o
+
+$(RANGEEXEC): rangequeryclient.o $(OBJECTFILES)
+	$(CC) $(CFLAGS) rangequeryclient.o $(OBJECTFILES) -o $@
+	cp $(RANGEEXEC) .
+	
+$(RELATIONTESTSEXEC): relationtests.o $(BUILDIR)/util.o $(BUILDIR)/relation_mem.o
+	$(CC) $(CFLAGS) relationtests.o $(BUILDIR)/util.o $(BUILDIR)/relation_mem.o -o $@
+	cp $(RELATIONTESTSEXEC) .
+
+rangequeryclient.o: rangequeryclient.c $(LIBRARYDIR)/relation.h $(LIBRARYDIR)/util.h $(APPSDIR)/relapps.h
 	$(CC) $(CFLAGS) -c $<
+	
+relationtests.o: relationtests.c $(LIBRARYDIR)/relation.h $(LIBRARYDIR)/util.h
+	$(CC) $(CFLAGS) -c $<
+
 

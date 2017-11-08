@@ -17,9 +17,9 @@
 
 #include "util.h"
 
-/* Relation type declaration. A Relation is a set of Records. */
+/* A Relation is a set of Records. */
 typedef struct Relation* Relation_T;
-/* Cursor type declaration. A cursor operates on the relation. */
+/* A cursor operates on the relation. */
 typedef struct Cursor* Cursor_T;
 
 
@@ -30,9 +30,8 @@ Relation_T RL_NewRelation(void);
 /* Delete the relation */
 void RL_DeleteRelation(Relation_T relation);
 
-/* Create a cursor on the specified relation.
- * On creation, the cursor is invalid. i.e. It is not pointing to a record in
- * the table.
+/* Create a cursor on the specified relation. On creation, cursor is invalid. 
+ * i.e. It is not pointing to a record in the table.
  * Hence, certain operations cannot be carried out on it. */
 Cursor_T RL_NewCursor(Relation_T relation);
 
@@ -49,17 +48,19 @@ unsigned long RL_GetKey(Cursor_T cursor);
  * Relation  Operations  *
  *************************/
 
-/* TODO: what kind of failures can occur? */
 /* Put a key and its record into the relation. If the key already exists,
  * update record. Leave the cursor at key's position, if successful. Else, 
  * the cursor is invalid. Return TRUE on success; return FALSE on failure. 
- * PutRecord will be faster if Cursor is pointing near record.
+ */
+/* 
+ * TODO: PutRecord will be faster if Cursor is pointing near record.
+ * TODO: what kind of failures can occur?
  */
 Bool RL_PutRecord(Cursor_T cursor, unsigned long key, const void* record);
 
 /* Move the cursor to the position of key in it's relation. 
- * Return True on Success; return False if the record doesn't exist. 
- * Cursor will be Invalid if the Relation is empty.
+ * Return True if key in Relation. Return False if Relation empty or key not in 
+ * relation. Cursor will be Invalid if the Relation is empty.
  * Write to pRes, whether the key of the record at the current location of 
  * cursor is: less than (*pRes < 0), equal to (*pRes == 0), 
  * or greater than (*pRes > 0) the search key.

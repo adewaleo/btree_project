@@ -15,8 +15,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include "relation.h"
-#include "relapps.h"
+#include "../libraries/relation.h"
+#include "../applications/relapps.h"
 
 
 static void range_query_client_test(int argc, char **argv){

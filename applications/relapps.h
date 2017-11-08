@@ -14,8 +14,8 @@
 #ifndef RELAPPS_H
 #define RELAPPS_H
 
-#include "relation.h" 
-#include "util.h"
+#include "../libraries/relation.h" 
+#include "../libraries/util.h"
 #include <stddef.h>
 #include <stdio.h>
 

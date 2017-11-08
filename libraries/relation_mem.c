@@ -12,7 +12,6 @@
  */
 
 #include "relation.h"
-#include "util.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -172,6 +171,7 @@ Bool RL_PutRecord(Cursor_T cursor, unsigned long key, const void* record) {
     success = insertKeyRecord(cursor->relation->root, key, record,
             &newEntryFromChild, cursor, cursor->relation, 0);
 
+    /*TODO: move cursor->isValid = True into return statement here. */
     if (success) {
         return success;
     }
@@ -696,7 +696,7 @@ static int findChildIndex(const Entry* entries, unsigned long key, int length) {
 }
 
 /* move cursor to key in node. On finding key's record, return True and update cursor. 
- * If relation empty or key not in B+-tree, return 0 */
+ * If relation empty or key not in B+-tree, return False */
 static Bool moveToRecord(BtNode* node, unsigned long key, Cursor* cursor, 
         const int level, int *pRes) {
     cursor->ancestors[level] = node;

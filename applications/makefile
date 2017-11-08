@@ -13,19 +13,11 @@ LIBRARYDIR = ../libraries
 OBJECTFILES = $(BUILDIR)/relapps.o
 
 # dependency rules for nonfile targets 
-all: fetchdeps $(OBJECTFILES) clean
+all:  $(OBJECTFILES) clean
 
-fetchdeps:
-	cp $(LIBRARYDIR)/relation.h . 
-	cp $(LIBRARYDIR)/util.h .
-
-clean: cleandeps
+clean: 
 	rm -f *.o
 
-cleandeps:
-	rm -f relation.h
-	rm -f util.h
-
-$(BUILDIR)/relapps.o: relapps.c relapps.h relation.h util.h
+$(BUILDIR)/relapps.o: relapps.c relapps.h $(LIBRARYDIR)/relation.h $(LIBRARYDIR)/util.h
 	$(CC) $(CFLAGS) -c $<
 	mv relapps.o $(BUILDIR)
