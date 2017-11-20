@@ -3,8 +3,8 @@
 
 CC = gcc 
 
-CFLAGS = -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
-# CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
+# CFLAGS = -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
+CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
 # CFLAGS = -NDEBUG  -O -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
 
 BUILDIR = ../build
@@ -14,9 +14,10 @@ APPSDIR = ../applications
 OBJECTFILES = $(BUILDIR)/util.o $(BUILDIR)/relation_mem.o $(BUILDIR)/relapps.o
 RANGEEXEC = $(BUILDIR)/rangequery
 RELATIONTESTSEXEC = $(BUILDIR)/relationtests
+STRINGBAGCLIENT = $(BUILDIR)/stringbagclient
 
 # dependency rules for nonfile targets 
-all:  builddeps $(RANGEEXEC) $(RELATIONTESTSEXEC) clean
+all:  builddeps $(RANGEEXEC) $(RELATIONTESTSEXEC) $(STRINGBAGCLIENT) clean
 
 builddeps:
 	$(MAKE) -C $(LIBRARYDIR)
@@ -32,11 +33,18 @@ $(RANGEEXEC): rangequeryclient.o $(OBJECTFILES)
 $(RELATIONTESTSEXEC): relationtests.o $(BUILDIR)/util.o $(BUILDIR)/relation_mem.o
 	$(CC) $(CFLAGS) relationtests.o $(BUILDIR)/util.o $(BUILDIR)/relation_mem.o -o $@
 	cp $(RELATIONTESTSEXEC) .
+	
+$(STRINGBAGCLIENT): stringbagclient.o $(BUILDIR)/util.o $(BUILDIR)/stringbag.o
+	$(CC) $(CFLAGS) stringbagclient.o $(BUILDIR)/util.o $(BUILDIR)/stringbag.o -o $@
+	cp $(STRINGBAGCLIENT) .
 
 rangequeryclient.o: rangequeryclient.c $(LIBRARYDIR)/relation.h $(LIBRARYDIR)/util.h $(APPSDIR)/relapps.h
 	$(CC) $(CFLAGS) -c $<
 	
 relationtests.o: relationtests.c $(LIBRARYDIR)/relation.h $(LIBRARYDIR)/util.h
+	$(CC) $(CFLAGS) -c $<
+
+stringbagclient.o: stringbagclient.c  $(LIBRARYDIR)/stringbag.h $(LIBRARYDIR)/util.h
 	$(CC) $(CFLAGS) -c $<
 
 

@@ -3,12 +3,12 @@
 
 CC = gcc 
 
-CFLAGS = -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
-# CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
+# CFLAGS = -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
+CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
 # CFLAGS = -NDEBUG  -O -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
 
 BUILDIR = ../build/
-OBJECTFILES = $(BUILDIR)/util.o $(BUILDIR)/relation_mem.o
+OBJECTFILES = $(BUILDIR)/util.o $(BUILDIR)/relation_mem.o $(BUILDIR)/stringbag.o
 
 # dependency rules for nonfile targets 
 all: $(OBJECTFILES)
@@ -23,3 +23,8 @@ $(BUILDIR)/util.o: util.c util.h
 $(BUILDIR)/relation_mem.o: relation_mem.c relation.h util.h 
 	$(CC) $(CFLAGS) -c $<
 	mv relation_mem.o $(BUILDIR)
+	
+	
+$(BUILDIR)/stringbag.o: stringbag.c stringbag.h util.h
+	$(CC) $(CFLAGS) -c $<
+	mv stringbag.o $(BUILDIR)
