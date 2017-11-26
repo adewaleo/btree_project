@@ -206,7 +206,6 @@ Bool RL_MoveToFirstRecord(Cursor_T btCursor) {
     Bool success;
     
     assert(btCursor);
-    assert(btCursor->isValid);
     
     success = moveToFirstRecord(btCursor->relation->root, btCursor, 0);
     btCursor->isValid = success;
@@ -654,10 +653,10 @@ static Bool insertKeyRecord(BtNode* node, unsigned long key, const void* record,
 
             /* If target index is less than firstNodeSize, then new key in 
              * first node */
-            if (targetIdx < firstNodeSize) {
+            if (targetIdx + 1 < firstNodeSize) {
                 /* Update cursor */
                 cursor->currNode = node;
-                cursor->entryIndex = targetIdx;
+                cursor->entryIndex = targetIdx + 1;
                 
                 /* nextAncestorIdx of parent might be new if*/
                 cursor->ancestors[cursor->level] = node;

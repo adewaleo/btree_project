@@ -3,8 +3,8 @@
 
 CC = gcc 
 
-CFLAGS = -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
-# CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
+# CFLAGS = -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
+CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
 # CFLAGS = -NDEBUG  -O -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
 
 BUILDIR = ../build
@@ -13,7 +13,7 @@ LIBRARYDIR = ../libraries
 OBJECTFILES = $(BUILDIR)/relapps.o
 
 # dependency rules for nonfile targets 
-all:  $(OBJECTFILES) clean
+all:  $(OBJECTFILES)
 
 clean: 
 	rm -f *.o

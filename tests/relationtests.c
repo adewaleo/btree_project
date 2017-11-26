@@ -19,12 +19,29 @@
 #include "../applications/relapps.h"
 
 
-void tests(void) {
+static void printRelationKeys(Cursor_T cursor){
+    Bool status = True;
+    unsigned long key;
+    
+    if(RL_MoveToFirstRecord(cursor)) {
+        printf("Printing Keys: ");
+        while(status) {
+            key = RL_GetKey(cursor);
+            printf("%lu ", key);
+            status = RL_MoveToNext(cursor);
+        }
+        printf("\n");
+    }
+}
+
+static void tests(void) {
     enum {TEST_SIZE = 25};
     enum {NUM_VALUES = 5000};
     
     Relation_T testRelation = RL_NewRelation();
     Cursor_T testCursor = RL_NewCursor(testRelation);
+    Cursor_T printCursor = RL_NewCursor(testRelation);
+    
     unsigned long i;
     unsigned long *test_values;
     unsigned long testIdx[TEST_SIZE];
@@ -44,10 +61,14 @@ void tests(void) {
     }
     
     while(count < TEST_SIZE) {
+        unsigned long temp;
         i = rand() % TEST_SIZE;
         
         printf("%d: Putting key %lu with value %lu\n", count, i, test_values[i]);
         assert(RL_PutRecord(testCursor, i, &test_values[i]));
+        temp = *(unsigned long *)RL_GetRecord(testCursor);
+        assert(temp == test_values[i]);
+
         testIdx[count] = i;
         count++;
     }
@@ -109,14 +130,17 @@ void tests(void) {
 
     for(i = TEST_SIZE; i > 0; i--) {   
         unsigned long prev, curr;
-        unsigned long *randNum;
+        unsigned long *pRandNum;
         
-        randNum = (unsigned long *) malloc(sizeof(unsigned long));
-        *randNum = rand() % (TEST_SIZE * 3);
-       
-        assert(RL_PutRecord(testCursor, *randNum, randNum));
+        pRandNum = (unsigned long *) malloc(sizeof(unsigned long));
+        *pRandNum = rand() % (TEST_SIZE * 3);
+                     
+        assert(RL_PutRecord(testCursor, *pRandNum, pRandNum));
         prev = *(unsigned long *)RL_GetRecord(testCursor);
-        assert(prev == *randNum);
+        
+        if(prev != *pRandNum)
+            printf("%lu %lu", prev, *pRandNum);
+        assert(prev == *pRandNum);    
         
         status = RL_MoveToNext(testCursor);
         while(status) {
@@ -157,7 +181,7 @@ void in_order_test(char* infilename, char* outfilename) {
         }
     }
     
-    printf("\nPrinting words and word count\n");
+    printf("\nPrinting words and word count to file %s\n", outfilename);
     status = RL_MoveToFirstRecord(testCursor);
     assert(status);
     
@@ -169,6 +193,7 @@ void in_order_test(char* infilename, char* outfilename) {
 
 
 int main(int argc, char** argv) {
+        
     tests();
     
     if (argc == 3){

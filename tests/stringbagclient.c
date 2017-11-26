@@ -85,5 +85,7 @@ int main(int argc, char** argv) {
     strncpy(testStr, SB_Get(bag, 4, &len), len);
     testStr[len] = '\0';
     assert(strcmp(testStr, "Egg") == 0);   
+    
+    return 0;
 }
 

@@ -17,7 +17,7 @@ RELATIONTESTSEXEC = $(BUILDIR)/relationtests
 STRINGBAGCLIENT = $(BUILDIR)/stringbagclient
 
 # dependency rules for nonfile targets 
-all:  builddeps $(RANGEEXEC) $(RELATIONTESTSEXEC) $(STRINGBAGCLIENT) clean
+all:  builddeps $(RANGEEXEC) $(RELATIONTESTSEXEC) $(STRINGBAGCLIENT)
 
 builddeps:
 	$(MAKE) -C $(LIBRARYDIR)

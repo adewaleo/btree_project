@@ -21,7 +21,7 @@ typedef enum { False = 0 , True = 1} Bool;
 /* enum {ORDER = 2}; */
 
 /* Fanout of Btree nodes */
-enum {FANOUT = 15};
+enum {FANOUT = 3};
 
 /* Max Tree depth: maximum number of levels. 
  * Levels go from 0 to MAX_TREE_DEPTH - 1 */
