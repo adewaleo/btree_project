@@ -263,6 +263,59 @@ Bool RL_MoveToNext(Cursor_T btCursor) {
     return True; 
 }
 
+
+Bool RL_MoveToPrevious(Cursor_T btCursor) {
+    
+    int numKeys, currLevel, newIdx;
+    numKeys = btCursor->currNode->numKeys;
+    currLevel = btCursor->level;
+        
+    assert(btCursor != NULL);
+    assert(btCursor->isValid);
+    
+    /* If cursor is not at last index, set it to previous index.*/
+    if(btCursor->entryIndex > (size_t) 0 ) {
+        btCursor->entryIndex--;
+        btCursor->nextAncestorPointerIdx[currLevel] = btCursor->entryIndex;
+        btCursor->isValid = True;
+        return True;
+    }
+    
+    /* While below root and ancestor pointer is first pointer, ascend. */
+    while(currLevel >= 0 && (btCursor->nextAncestorPointerIdx[currLevel] == 0)){
+        currLevel--;
+    }
+
+    
+    /* If at last record, currLevel would be at root.*/
+    if (currLevel < 0) {
+        return False;
+    }
+    
+    /* Go down previous child to next (lower) level */
+    newIdx = --(btCursor->nextAncestorPointerIdx[currLevel]);
+    btCursor->ancestors[currLevel+1] = btCursor->ancestors[currLevel]->entries[newIdx].ptr.child;
+    currLevel++;
+    
+    /* Descend to correct leaf down rightmost child. All leaves have same level. */
+    while(currLevel < btCursor->level){
+        int lastIdx = btCursor->ancestors[currLevel]->numKeys - 1;
+        
+        btCursor->nextAncestorPointerIdx[currLevel] = lastIdx;
+        btCursor->ancestors[currLevel+1] = btCursor->ancestors[currLevel]->entries[lastIdx].ptr.child;
+        currLevel++; 
+    }
+    
+    numKeys = btCursor->ancestors[currLevel]->numKeys;
+
+    btCursor->currNode = btCursor->ancestors[currLevel];    
+    btCursor->nextAncestorPointerIdx[currLevel] = 0;
+    btCursor->entryIndex = numKeys - 1;
+    btCursor->isValid = True;
+    
+    return True; 
+}
+
 unsigned long RL_GetKey(Cursor_T cursor) {
     assert(cursor != NULL);
     assert(cursor->isValid);

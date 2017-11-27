@@ -82,5 +82,10 @@ Bool RL_MoveToFirstRecord(Cursor_T btCursor);
  * return True. If no next record, return False. cursor is at last record. */
 Bool RL_MoveToNext(Cursor_T btCursor);
 
+/* Go to the previous record of cursor's relation. If there is a previous 
+ * record, return True. If no previous record, return False. 
+ * cursor is at first record.*/
+Bool RL_MoveToPrevious(Cursor_T btCursor);
+
 #endif /* RELATION_H */
 
