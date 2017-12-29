@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include "../libraries/stringbag.h"
+#include "stringbag.h"
 
 /*
  * Client to test stringbag.

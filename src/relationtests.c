@@ -15,8 +15,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include "../libraries/relation.h"
-#include "../applications/relapps.h"
+#include "relation.h"
+#include "relapps.h"
 
 
 static void printRelationKeys(Cursor_T cursor){
