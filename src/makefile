@@ -12,7 +12,8 @@ UTILOBJ = util.o
 RELATIONOBJ = relation_mem.o
 STRINGBAGOBJ = stringbag.o
 RELAPPSOBJ = relapps.o
-LIBOBJECTFILES = $(UTILOBJ) $(RELATIONOBJ) $(STRINGBAGOBJ) $(RELAPPSOBJ)
+BORDERNODEOBJ = bordernode.o
+LIBOBJECTFILES = $(UTILOBJ) $(RELATIONOBJ) $(STRINGBAGOBJ) $(RELAPPSOBJ) $(BORDERNODEOBJ)
 
 # Test object Files
 RANGECLIENTOBJ = rangequeryclient.o 
@@ -36,8 +37,8 @@ clean:
 $(RANGEEXEC): rangequeryclient.o util.o relation_mem.o relapps.o
 	$(CC) $(CFLAGS) rangequeryclient.o util.o relation_mem.o relapps.o -o $@
 	
-$(RELATIONTESTSEXEC): relationtests.o util.o relation_mem.o
-	$(CC) $(CFLAGS) relationtests.o util.o relation_mem.o -o $@
+$(RELATIONTESTSEXEC): relationtests.o util.o relation_mem.o bordernode.o
+	$(CC) $(CFLAGS) relationtests.o util.o relation_mem.o bordernode.o -o $@
 	
 $(STRINGBAGCLIENT): stringbagclient.o util.o stringbag.o
 	$(CC) $(CFLAGS) stringbagclient.o util.o stringbag.o -o $@
@@ -64,4 +65,6 @@ relation_mem.o: relation_mem.c relation.h util.h
 stringbag.o: stringbag.c stringbag.h util.h
 	$(CC) $(CFLAGS) -c $<
 	
-	
+bordernode.o: bordernode.c bordernode.h relation.h util.h
+	$(CC) $(CFLAGS) -c $<
+

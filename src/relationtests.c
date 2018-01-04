@@ -17,6 +17,7 @@
 #include <string.h>
 #include "relation.h"
 #include "relapps.h"
+#include "bordernode.h"
 
 
 static void printRelationKeys(Cursor_T cursor){
@@ -191,10 +192,41 @@ void in_order_test(char* infilename, char* outfilename) {
     } 
 }
 
+void borderNodeUnitTests(void){
+    char* testStr = "testnode";
+    char* testSuf = "verylongsuffix";
+    unsigned long testLong = UTIL_StrToUl(testStr);
+    int testVals[10], i;
+    BorderNode_T bn = BN_NewBorderNode(testLong);
+    
+    testLong = UTIL_StrToUl(testStr);
+    
+    for (i = 0; i < 10; i++) {
+        testVals[i] = i;
+    }
+        
+    for (i = 0; i < 10; i++) {
+        BN_SetValue(bn, i, &testVals[i]);
+    }
+    BN_SetSuffix(bn, testSuf);
+    
+    for (i = 0; i < 10; i++) {
+        int value;
+        value = *((int*)BN_GetValue(bn, i));
+        assert(value == testVals[i]);
+    }
+    assert(strcmp(testSuf, BN_GetSuffix(bn)) == 0);
+    
+    assert(strcmp(testStr, BN_GetKeySlice(bn)) == 0);
+    
+    BN_FreeBorderNode(bn);
+}
+
 
 int main(int argc, char** argv) {
         
     tests();
+    borderNodeUnitTests();
     
     if (argc == 3){
         printf("Argc is 3\n");
