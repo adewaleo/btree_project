@@ -3,9 +3,14 @@
 
 CC = gcc 
 
+# Normal build
 # CFLAGS = -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
-# CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
-CFLAGS = -D NDEBUG  -O3 -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
+
+# Debug Build (note: .o files needed when debugging in netbeans)
+ CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
+
+# Optimized build
+# CFLAGS = -D NDEBUG  -O3 -Wall -Wextra -Wno-unused-parameter -pedantic -Wall -std=c89
 
 # Library object files
 UTILOBJ = util.o
@@ -34,7 +39,7 @@ KVSTORETESTS = kvstoretests.exe
 TESTEXECFILES = $(RANGEEXEC) $(RELATIONTESTSEXEC) $(STRINGBAGCLIENT) \
 		$(KVSTORETESTS)
 
-all: $(LIBOBJECTFILES) $(TESTOBJFILES) $(TESTEXECFILES) clean
+all: $(LIBOBJECTFILES) $(TESTOBJFILES) $(TESTEXECFILES)
 
 clean:
 	rm -f *.o
