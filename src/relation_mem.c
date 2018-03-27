@@ -665,7 +665,7 @@ static Bool insertKeyRecord(BtNode* node, unsigned long key, const void* record,
 
         /* If key already exists, update record and return success = True */
         targetIdx = findChildIndex(node->entries, key, node->numKeys);
-        if (node->entries[targetIdx].key == key) {
+        if (targetIdx != -1 && node->entries[targetIdx].key == key) {
             node->entries[targetIdx].ptr.record = record;
 
             cursor->currNode = node;
