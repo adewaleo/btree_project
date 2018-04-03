@@ -26,11 +26,13 @@ typedef struct Cursor Cursor;
 /* Function Declarations */
 static BtNode* createNewNode(Bool isLeaf);
 
+static Bool isNodeParent (BtNode * currNode, unsigned long key);
+
 static Bool insertKeyRecord(BtNode* node, unsigned long key, const void* record,
         Entry * const newEntryFromChild, Cursor* cursor, Relation_T relation,
         const int level);
 
-static void putAtRecord(Cursor_T cursor,int level, Entry * newEntry, size_t key);
+static void putEntry(Cursor_T cursor,int level, Entry * newEntry, size_t key);
 
 static Bool deleteKeyRecord(BtNode* parentNode, BtNode* node, unsigned long key,
         Entry* const oldEntryFromChild, Cursor* cursor, Relation_T relation, 
@@ -47,8 +49,8 @@ static int findChildIndex(const Entry* entries, unsigned long key, int length);
 
 static int findRecordIndex(const Entry* entries, unsigned long key, int length);
 
-static Bool moveToRecord(BtNode* node, unsigned long key, Cursor* cursor, 
-        const int level, int *pRes);
+static Bool moveToKey(BtNode* node, unsigned long key, Cursor* cursor,
+	const int level);
 
 static Bool moveToFirstRecord(BtNode* node, Cursor* cursor, int level);
 
@@ -113,20 +115,24 @@ struct Cursor {
     /* The relation that this cursor points to*/
     Relation* relation;
     /* The current Node BtCursor is pointing to */
-    BtNode* currNode;
-    /* The index of the entry in currNode, BtCursor is pointing to. */
-    size_t entryIndex;
-    /* Is this Cursor valid? */
     Bool isValid;
     /*What level is the cursor at*/
     int level;
     /* Arrays of index at ancestor node[i] containing child pointer to next 
      * ancestor node [i + 1]. */
     /* indices range from -1 to NUM_KEYS - 1. At leaf, index is entryIdx */
-    int nextAncestorPointerIdx[MAX_TREE_DEPTH];
+    int ancestorsIdx[MAX_TREE_DEPTH];
     /* Array of Current Nodes Ancestors*/
     BtNode* ancestors[MAX_TREE_DEPTH];
 };
+
+int entryIndex (Cursor_T cursor) {
+  return cursor->ancestorsIdx[cursor->level];
+}
+
+BtNode* currNode (Cursor_T cursor) {
+  return cursor->ancestors[cursor->level];
+}
 
 /* TODO: set cursor method */
 
@@ -173,13 +179,13 @@ Cursor_T RL_NewCursor(Relation_T relation) {
     }
 
     cursor->relation = relation;
-    cursor->currNode = NULL;
-    cursor->entryIndex = 0;
     cursor->isValid = False;
     cursor->level = 0;
+    (void) moveToFirstRecord(relation->root, cursor, 0);
+    /* TODO: sets isValid, level and the first ancestors, ancestorsIdx (should be ok) */
 
-    for (i = 0; i < MAX_TREE_DEPTH; i++) {
-        cursor->nextAncestorPointerIdx[i] = 0;
+    for (i = cursor->level+1; i < MAX_TREE_DEPTH; i++) {
+        cursor->ancestorsIdx[i] = 0;
         cursor->ancestors[i] = NULL;
     }
     return cursor;
@@ -195,44 +201,69 @@ Bool RL_CursorIsValid(Cursor_T cursor) {
 }
 
 void RL_PutRecord(Cursor_T cursor, unsigned long key, const void* record) {
-    Bool success;
+    Bool success;		/* TODO: remove it? */
     Entry newEntry;
-    int pres;
     assert(cursor != NULL);
 
     newEntry.ptr.record = record;
     newEntry.key = key;
 
-    success = RL_MoveToRecord(cursor, key, &pres);
-    putAtRecord(cursor,cursor->level, &newEntry, key);
+    success = RL_MoveToKey(cursor, key);
+    putEntry(cursor,cursor->level, &newEntry, key);
     success = RL_MoveToNext(cursor);
-    
-    if (success == False) {
-      cursor->isValid = False;
-    }
+
+    /* cursor->isValid = success; */ /* TODO: RL_MoveToNext already sets isValid (should be done) */
     
     return;
 }
 
-Bool RL_MoveToRecord(Cursor_T cursor, unsigned long key, int *pRes) {
+/* Returns true if we know for sure that currNode is a parent of the key
+ * Returns False if we can't be sure */
+static Bool isNodeParent (BtNode * currNode, unsigned long key) {
+
+  int idx;
+  idx = findChildIndex(currNode->entries, key, currNode->numKeys);
+  if (idx == -1 || idx == currNode->numKeys -1) {
+    return False;
+  }
+  return True;
+
+}
+
+Bool RL_MoveToKey(Cursor_T cursor, unsigned long key) {
     unsigned long lowest, highest;
     assert(cursor != NULL);
 
-
-    if (cursor->isValid) {
-        lowest = cursor->currNode->entries[0].key;
-        highest = cursor->currNode->entries[cursor->currNode->numKeys - 1].key;
+    /* If the root is a leaf node */
+    if (cursor->level == 0)
+      return moveToKey(currNode(cursor), key, cursor, cursor->level);
+    
+    /* Otherwise, we first check if the cursor should point to the same leaf node */
+    if (cursor->isValid) { /* TODO: I tink we can remove this now that we removed the empty case */
+      lowest = currNode(cursor)->entries[0].key;
+      highest = currNode(cursor)->entries[currNode(cursor)->numKeys - 1].key;
         if (key >= lowest && key <= highest) {
-            return moveToRecord(cursor->currNode, key, cursor, cursor->level, pRes);
+	  return moveToKey(currNode(cursor), key, cursor, cursor->level);
         }
     }
-        return moveToRecord(cursor->relation->root, key, cursor, 0, pRes);
-        
+    
+    /* If not, we go up until we are sure to be in a parent node 
+     * A parent node is either the root or has one lesser key and one greater key
+     * than the desired one (i.e. findChildIndex isn't -1 or numKeys-1 */
+    
+    cursor->level --;
+    
+    while (cursor->level > 0 && isNodeParent(currNode(cursor), key) == False) {
+      cursor->level --;
+    }	   
+    
+    /* When the parent node is found, we go down to the desired key */
+    return moveToKey(cursor->ancestors[cursor->level], key, cursor, cursor->level);
 }
 
 const void* RL_GetRecord(Cursor_T cursor) {
     assert(cursor->isValid);
-    return (cursor->currNode->entries)[cursor->entryIndex].ptr.record;
+    return (currNode(cursor)->entries)[entryIndex(cursor)].ptr.record;
 }
 
 
@@ -267,29 +298,26 @@ Bool RL_MoveToFirstRecord(Cursor_T btCursor) {
     success = moveToFirstRecord(btCursor->relation->root, btCursor, 0);
     btCursor->isValid = success;
     return success;
-     
-    
 }
 
 Bool RL_MoveToNext(Cursor_T btCursor) {
         
     int numKeys, currLevel, newIdx;
-    numKeys = btCursor->currNode->numKeys;
+    numKeys = currNode(btCursor)->numKeys;
     currLevel = btCursor->level;
         
     assert(btCursor != NULL);
     assert(btCursor->isValid);
     
     /* If cursor is not at last index, set it to next index.*/
-    if(btCursor->entryIndex < (size_t)(numKeys - 1)) {
-        btCursor->entryIndex++;
-        btCursor->nextAncestorPointerIdx[currLevel] = btCursor->entryIndex;
+    if(entryIndex(btCursor) < (numKeys - 1)) {
+        btCursor->ancestorsIdx[currLevel] ++;
         btCursor->isValid = True;
         return True;
     }
     
     /* While below root and ancestor pointer is last pointer, ascend. */
-    while(currLevel >= 0 && (btCursor->nextAncestorPointerIdx[currLevel] == 
+    while(currLevel >= 0 && (btCursor->ancestorsIdx[currLevel] == 
             btCursor->ancestors[currLevel]->numKeys - 1)){
         currLevel--;
     }
@@ -297,24 +325,23 @@ Bool RL_MoveToNext(Cursor_T btCursor) {
     
     /* If at last record, currLevel would be at root.*/
     if (currLevel < 0) {
+        btCursor->isValid = False;
         return False;
     }
     
     /* Go down next child to next level */
-    newIdx = ++(btCursor->nextAncestorPointerIdx[currLevel]);
+    newIdx = ++(btCursor->ancestorsIdx[currLevel]);
     btCursor->ancestors[currLevel+1] = btCursor->ancestors[currLevel]->entries[newIdx].ptr.child;
     currLevel++;
     
     /* Descend to correct leaf down leftmost child. All leaves have same level. */
     while(currLevel < btCursor->level){
-        btCursor->nextAncestorPointerIdx[currLevel] = -1;
+        btCursor->ancestorsIdx[currLevel] = -1;
         btCursor->ancestors[currLevel+1] = btCursor->ancestors[currLevel]->entries[-1].ptr.child;
         currLevel++; 
     }
     
-    btCursor->currNode = btCursor->ancestors[currLevel];
-    btCursor->nextAncestorPointerIdx[currLevel] = 0;
-    btCursor->entryIndex = 0;
+    btCursor->ancestorsIdx[currLevel] = 0;
     btCursor->isValid = True;
     
     return True; 
@@ -324,16 +351,15 @@ Bool RL_MoveToNext(Cursor_T btCursor) {
 Bool RL_MoveToPrevious(Cursor_T btCursor) {
     
     int numKeys, currLevel, newIdx;
-    numKeys = btCursor->currNode->numKeys;
+    numKeys = currNode(btCursor)->numKeys;
     currLevel = btCursor->level;
         
     assert(btCursor != NULL);
     assert(btCursor->isValid);
     
     /* If cursor is not at last index, set it to previous index.*/
-    if(btCursor->entryIndex > (size_t) 0 ) {
-        btCursor->entryIndex--;
-        btCursor->nextAncestorPointerIdx[currLevel] = btCursor->entryIndex;
+    if(entryIndex(btCursor) > 0 ) {
+      btCursor->ancestorsIdx[currLevel] --;
         btCursor->isValid = True;
         return True;
     } else {
@@ -343,7 +369,7 @@ Bool RL_MoveToPrevious(Cursor_T btCursor) {
 
     
     /* While below root and ancestor pointer is first pointer, ascend. */
-    while(currLevel >= 0 && (btCursor->nextAncestorPointerIdx[currLevel] == -1)){
+    while(currLevel >= 0 && (btCursor->ancestorsIdx[currLevel] == -1)){
         currLevel--;
     }
 
@@ -354,7 +380,7 @@ Bool RL_MoveToPrevious(Cursor_T btCursor) {
     }
     
     /* Go down previous child to next (lower) level */
-    newIdx = --(btCursor->nextAncestorPointerIdx[currLevel]);
+    newIdx = --(btCursor->ancestorsIdx[currLevel]);
     btCursor->ancestors[currLevel+1] = btCursor->ancestors[currLevel]->entries[newIdx].ptr.child;
     currLevel++;
     
@@ -362,16 +388,14 @@ Bool RL_MoveToPrevious(Cursor_T btCursor) {
     while(currLevel < btCursor->level){
         int lastIdx = btCursor->ancestors[currLevel]->numKeys - 1;
         
-        btCursor->nextAncestorPointerIdx[currLevel] = lastIdx;
+        btCursor->ancestorsIdx[currLevel] = lastIdx;
         btCursor->ancestors[currLevel+1] = btCursor->ancestors[currLevel]->entries[lastIdx].ptr.child;
         currLevel++; 
     }
     
     numKeys = btCursor->ancestors[currLevel]->numKeys;
 
-    btCursor->currNode = btCursor->ancestors[currLevel];    
-    btCursor->nextAncestorPointerIdx[currLevel] = 0;
-    btCursor->entryIndex = numKeys - 1;
+    btCursor->ancestorsIdx[currLevel] = 0;
     btCursor->isValid = True;
     
     return True; 
@@ -381,7 +405,7 @@ unsigned long RL_GetKey(Cursor_T cursor) {
     assert(cursor != NULL);
     assert(cursor->isValid);
     
-    return cursor->currNode->entries[cursor->entryIndex].key;
+    return currNode(cursor)->entries[entryIndex(cursor)].key;
 }
 
 
@@ -413,8 +437,6 @@ void RL_PrintTree(Relation_T relation) {
 }
 
 
-
-
 static BtNode* createNewNode(Bool isLeaf) {
     BtNode* newNode;
 
@@ -430,73 +452,120 @@ static BtNode* createNewNode(Bool isLeaf) {
     return newNode;
 }
 
+/* Insert entry and split node. Return a new entry to be inserted in parent. 
+ * Use if this is a leaf node, new entry's key is a copy of the first key to
+ * in the second node. Otherwise, newEntry's key is the key between the last key
+ * of the first node and the first key of the second node. In both cases ptr is 
+ * a ptr to the newly created node. */
 static Entry* splitnode(BtNode* node, Entry* entry, Bool isLeaf) {
-  return entry; /* TODO */
-}
+    Entry allEntries[FANOUT + 1];
+    Entry* newEntry;
+    BtNode* newNode;
+    int i, j, tgtIdx, startIdx;
+    Bool inserted;
+    
+    /* Find first key that is greater than search key. Search key goes before this key. */
+    /* Question: is this correct node? */
+    tgtIdx = findRecordIndex(node->entries, entry->key, node->numKeys);
+    
+    j = 0; inserted = False;
+    
+    /* Build list of all entries. */
+    for(i = 0; i < FANOUT + 1; i++) {  
+        if(inserted = False && j == tgtIdx) {
+            allEntries[i] = entry;
+            inserted = True;
+            continue;
+        }
+        allEntries[i] = node->entries[j];
+        j++;  
+    }
+    
+    /* if the new entry came before an entry in the first node, 
+     * then we need to update those entries in the first node.*/
+    if(tgtIdx < FANOUT / 2) {
+        for(i = tgtIdx; i < FANOUT / 2; i++) {
+            node->numKeys[i] = allEntries[i];   
+        }
+    }
+    node->numKeys = FANOUT / 2;
+    
+    /* Create the new node. */
+    newNode = createNewNode(isLeaf);
+    assert(newNode);
+    
+    /* Select appropriate idx to start copying. */
+    if(isLeaf) {
+        startIdx = FANOUT / 2;
+    } else {
+        /* We push up middle node, so don't copy it into snd node. */
+        startIdx = FANOUT / 2 + 1;
+    }
+    
+    /*Copy entries to second node.*/
+    j = 0;
+    for (i = startIdx; i < FANOUT + 1; i++) {
+        newNode->entries[j] = allEntries[i];
+        j++;
+    }
+    newNode->numKeys = FANOUT + 1 - startIdx;
+    
+    newEntry = (Entry*) malloc(sizeof(Entry));
+    assert(newEntry != NULL);
+    
+    /* If this is a leaf, copy up first entry on second node. */
+    if(isLeaf) {
+        newEntry->key = allEntries[startIdx].key
+        newEntry->ptr.child = newNode;
+    }
+    /* Else we are pushing up entry before second node. */
+    else {
+        newEntry->key = allEntries[startIdx - 1].key
+        newEntry->ptr.child = newNode;
+    }
 
-static void update_cursor(Cursor_T cursor, int level, Entry * newEntry) {
-  return; /* TODO */
+    return newEntry; /* TODO */
 }
   
 /* Inserting a new entry at a position given by the cursor.
  * The cursor should point to the correct location.
  * If the key already exists in the relation, its record will be updated. */
-static void putAtRecord(Cursor_T cursor, int level, Entry * newEntry, size_t key) {
-
+static void putEntry(Cursor_T cursor, int level, Entry * newEntry, size_t key) {
+  BtNode * currNode;
+  
   if (level==-1) {
     /* the root has been split, and newEntry should be the only ontry in the new root */
-    BtNode* newRootNode = createNewNode(False);
-    int i;
-    assert(newRootNode);
+    currNode = createNewNode(False);
+    assert(currNode);
 
-    newRootNode->ptr0 = cursor->relation->root;
-    newRootNode->numKeys = 1;
-    newRootNode->entries[0] = *newEntry;
+    currNode->ptr0 = cursor->relation->root;
+    currNode->numKeys = 1;
+    currNode->entries[0] = *newEntry;
 
-    cursor->relation->root = newRootNode;
+    cursor->relation->root = currNode;
 
-    /* since we added a level, every cursor member must be shifted */
-    /* for (i=cursor->level+1; i>0; i--) { */
-    /*   cursor->ancestors[i] = cursor->ancestors[i-1]; */
-    /*   cursor->nextAncestorPointerIdx[i] = cursor->nextAncestorPointerIdx[i-1]; */
-    /* } */
+    cursor->ancestors[0] = currNode;
 
-    /* cursor->ancestors[0] = newRootNode; */
-    /* if (key < newEntry->key) { */
-    /*   cursor->nextAncestorPointerIdx[0] = -1; */
-    /* } else { */
-    /*   cursor->nextAncestorPointerIdx[0] =  0; */
-    /* } */
-    /* THIS DOESNT WORK */
-
-    cursor->ancestors[0] = newRootNode;
-    int* pres;
-    (void) moveToRecord(newRootNode, key, cursor, 0, pres);
-    /* this has to be successful because key was just inserted */
-
-
-    cursor->level++;
+    /* we need to update the cursor for the original inserted key */
+    (void) moveToKey(currNode, key, cursor, 0);
+    /* this has to return true because key was just inserted */
     return;
   }
-    
   
-  BtNode * currNode = cursor->ancestors[level];
+  currNode = cursor->ancestors[level];
 
-  if (currNode->isLeaf) { /* node pointed to by the cursor is a leaf node */
+  if (currNode->isLeaf) { /* current node is a leaf node */
     
-    if (currNode->entries[cursor->entryIndex].key == newEntry->key) {
+    if (currNode->entries[entryIndex(cursor)].key == newEntry->key) {
       /* the key already exists in the cursor */
-      currNode->entries[cursor->entryIndex].ptr = newEntry->ptr;
+      currNode->entries[entryIndex(cursor)].ptr = newEntry->ptr;
       return;
     }
     else {
       /* the key does not exist and must be inserted */
 
       if (currNode->numKeys < FANOUT) {
-	/* the current node has enough space to insert a new entry */
-	/* const size_t tgtIdx = findRecordIndex(currNode->entries, newEntry->key, currNode->numKeys); */
-	/* !!! is tgtIdx equal to cursor->entryIndex? I think it should be */
-	const size_t tgtIdx = cursor->entryIndex;
+	const size_t tgtIdx = entryIndex(cursor);
 	
 	size_t i;
 	/* Move all entries to the right of tgtIdx one to the right*/
@@ -509,27 +578,20 @@ static void putAtRecord(Cursor_T cursor, int level, Entry * newEntry, size_t key
 	return;
       }
       else {
-	/* the node must be split */
-
-	size_t oldkey = newEntry->key;
+	/* the leaf node must be split */
 	newEntry = splitnode(currNode, newEntry, True);
-	if (oldkey <= newEntry->key) {
-	  /* Entry has been inserted in the new node: cursor has to be updated */
-	  update_cursor(cursor, level, newEntry);
-	} /* I think this has to be removed */
 
 	/* recursive call to insert the newEntry from splitnode a level above */
-	putAtRecord(cursor, level-1, newEntry, key);
+	putEntry(cursor, level-1, newEntry, key);
       }
     }
   }
-  else { /* node pointed to by the cursor is an intern node */
+  else { /* current node is an intern node */
 
     if (currNode->numKeys < FANOUT) {
       /* the current intern node has enough space to insert a new entry */
-      /* const size_t tgtIdx = findChildIndex(currNode->entries, newEntry->key, currNode->numKeys); */
-      const size_t tgtIdx = cursor->nextAncestorPointerIdx[level] +1;
-      /* TODO: make sure that this is correct */
+      const size_t tgtIdx = cursor->ancestorsIdx[level] +1;
+      /* this is a correct index because there is enough space in the node */
       
       size_t i;
       /* Move all entries to the right of tgtIdx one to the right*/
@@ -540,24 +602,17 @@ static void putAtRecord(Cursor_T cursor, int level, Entry * newEntry, size_t key
       currNode->numKeys++;
       cursor->relation->numRecords++; /* is that the good place to put it? */
 
-      int* pres;
-      (void) moveToRecord(currNode, key, cursor, level, pres);
-      /* not sure about currNode here */
+      /* update the cursor to make it point to the inserted key */
+      (void) moveToKey(currNode, key, cursor, level);
 
       return;
     }
     else {
       /* the node must be split */
-
-      size_t oldkey = newEntry->key;
       newEntry = splitnode(currNode, newEntry, False);
-      if (oldkey <= newEntry->key) {
-	/* Entry has been inserted in the new node: cursor has to be updated */
-	update_cursor(cursor, level, newEntry);
-      }
-
+      
       /* recursive call to insert the newEntry from splitnode a level above */
-      putAtRecord(cursor, level-1, newEntry, key);
+      putEntry(cursor, level-1, newEntry, key);
       
     }
   }
@@ -602,7 +657,7 @@ static Bool insertKeyRecord(BtNode* node, unsigned long key, const void* record,
         }
     
         /* set index of pointer in current node that leads to next ancestor */
-        cursor->nextAncestorPointerIdx[level] = childTreePtrIdx;
+        cursor->ancestorsIdx[level] = childTreePtrIdx;
         
         success = insertKeyRecord(childNode, key,
                 record, newEntryFromChild, cursor, relation, level + 1);
@@ -639,7 +694,7 @@ static Bool insertKeyRecord(BtNode* node, unsigned long key, const void* record,
              * subtree pointed to by newEntryFromChild->child
              */
             if (key >= newKey) {
-                cursor->nextAncestorPointerIdx[level] = targetIdx + 1;
+                cursor->ancestorsIdx[level] = targetIdx + 1;
             }
             
 
@@ -734,11 +789,11 @@ static Bool insertKeyRecord(BtNode* node, unsigned long key, const void* record,
              * child subtree containing record does not change after split. */
             if (newChildIdxAllEntries < newEntryIdx) {
                 cursor->ancestors[level] = node;
-                cursor->nextAncestorPointerIdx[level] = newChildIdxAllEntries;
+                cursor->ancestorsIdx[level] = newChildIdxAllEntries;
             }
             else {
                 cursor->ancestors[level] = newNode;
-                cursor->nextAncestorPointerIdx[level] = newChildIdxAllEntries - 
+                cursor->ancestorsIdx[level] = newChildIdxAllEntries - 
                         (newEntryIdx + 1);
             }
             
@@ -761,15 +816,15 @@ static Bool insertKeyRecord(BtNode* node, unsigned long key, const void* record,
                 /* new level created */
                 for(i = cursor->level + 1; i > 0; i--){
                     cursor->ancestors[i] = cursor->ancestors[i-1];
-                    cursor->nextAncestorPointerIdx[i] = 
-                            cursor->nextAncestorPointerIdx[i-1];
+                    cursor->ancestorsIdx[i] = 
+                            cursor->ancestorsIdx[i-1];
                 }
                 
                 cursor->ancestors[0] = relation->root;
                 if (key < newEntryFromChild->key) {
-                    cursor->nextAncestorPointerIdx[0] = -1;
+                    cursor->ancestorsIdx[0] = -1;
                 } else {
-                    cursor->nextAncestorPointerIdx[0] = 0;
+                    cursor->ancestorsIdx[0] = 0;
                 }
                 
                 cursor->level++;
@@ -786,13 +841,11 @@ static Bool insertKeyRecord(BtNode* node, unsigned long key, const void* record,
             node->entries[0].ptr.record = record;
             node->numKeys++;
 
-            cursor->currNode = node;
-            cursor->entryIndex = 0;
             cursor->isValid = True;
             cursor->relation->numRecords++;
             
             /*Set index of pointer in current node that leads to next ancestor*/
-            cursor->nextAncestorPointerIdx[level] = cursor->entryIndex;
+            cursor->ancestorsIdx[level] = 0;
             cursor->level = level;
             
             newEntryFromChild->ptr.child = NULL;
@@ -806,12 +859,10 @@ static Bool insertKeyRecord(BtNode* node, unsigned long key, const void* record,
         if (targetIdx != -1 && node->entries[targetIdx].key == key) {
             node->entries[targetIdx].ptr.record = record;
 
-            cursor->currNode = node;
-            cursor->entryIndex = targetIdx;
             cursor->isValid = True;
                  
             /*Set index of pointer in current node that leads to next ancestor*/
-            cursor->nextAncestorPointerIdx[level] = cursor->entryIndex;
+            cursor->ancestorsIdx[level] = targetIdx;
             cursor->level = level;
             
             newEntryFromChild->ptr.child = NULL;
@@ -843,13 +894,11 @@ static Bool insertKeyRecord(BtNode* node, unsigned long key, const void* record,
 
 
             /* Update cursor */
-            cursor->currNode = node;
-            cursor->entryIndex = targetIdx + 1;
             cursor->isValid = True;
             cursor->relation->numRecords++;
             
             /*Set index of pointer in current node that leads to next ancestor*/
-            cursor->nextAncestorPointerIdx[level] = cursor->entryIndex;
+            cursor->ancestorsIdx[level] = targetIdx + 1;
             cursor->level = level;
            
             return True;
@@ -930,9 +979,9 @@ static Bool insertKeyRecord(BtNode* node, unsigned long key, const void* record,
                 cursor->level++;
 
                 if (targetIdx < firstNodeSize) {
-                    cursor->nextAncestorPointerIdx[0] = -1;
+                    cursor->ancestorsIdx[0] = -1;
                 } else {
-                    cursor->nextAncestorPointerIdx[0] = 0;
+                    cursor->ancestorsIdx[0] = 0;
                 }          
                 
             }
@@ -940,23 +989,16 @@ static Bool insertKeyRecord(BtNode* node, unsigned long key, const void* record,
             /* If target index is less than firstNodeSize, then new key in 
              * first node */
             if (targetIdx + 1 < firstNodeSize) {
-                /* Update cursor */
-                cursor->currNode = node;
-                cursor->entryIndex = targetIdx + 1;
-                
                 /* nextAncestorIdx of parent might be new if*/
                 cursor->ancestors[cursor->level] = node;
-                cursor->nextAncestorPointerIdx[cursor->level] = cursor->entryIndex;
+                cursor->ancestorsIdx[cursor->level] = targetIdx + 1;
             }                
             /* Else, it is in the second node.*/
             else {
-                /* Update cursor */
-                cursor->currNode = newNode;
-                cursor->entryIndex = targetIdx - (firstNodeSize - 1);
                 
                 /* nextAncestorIdx of parent might be new if*/
                 cursor->ancestors[cursor->level] = newNode;
-                cursor->nextAncestorPointerIdx[cursor->level] = cursor->entryIndex;
+                cursor->ancestorsIdx[cursor->level] = targetIdx - (firstNodeSize - 1);
             }
 
             cursor->isValid = True;
@@ -1343,7 +1385,7 @@ static void redistributeOrMerge(BtNode* leftNode, BtNode* rightNode,
 
 
 
-/* Given an array of entries, find the index of the first entry whose key is
+/* Given an array of entries, find the index of the last entry whose key is
  * less than or equal to the search key. */
 static int findChildIndex(const Entry* entries, unsigned long key, int length) {
     int i = 0;
@@ -1384,8 +1426,8 @@ static int findRecordIndex(const Entry* entries, unsigned long key, int length) 
 
 /* move cursor to key in node. On finding key's record, return True and update cursor. 
  * If relation empty or key not in B+-tree, return False */
-static Bool moveToRecord(BtNode* node, unsigned long key, Cursor* cursor, 
-        const int level, int *pRes) {
+static Bool moveToKey(BtNode* node, unsigned long key, Cursor* cursor, 
+        const int level) {
     cursor->ancestors[level] = node;
    
     if (node->isLeaf) {
@@ -1399,51 +1441,32 @@ static Bool moveToRecord(BtNode* node, unsigned long key, Cursor* cursor,
         }
         
         i = findRecordIndex(node->entries, key, node->numKeys);
-        cursor->currNode = node;
 	
-	/* if the key is greater than the last key at the correct Leaf, then it is greater than ay key in the cursor */
+	/* if the key is greater than the last key at the correct Leaf, then it is greater than ay key in the tree */
 	if (key > node->entries[node->numKeys -1].key) {
 	  cursor->isValid = False;
-	}
-	else {
+	} else {
 	  cursor->isValid = True;
 	}
 	
         cursor->level = level;
-
-        
-        /* if(i == -1) { */
-        /*     cursor->entryIndex = 0; */
-        /*     cursor->nextAncestorPointerIdx[level] = cursor->entryIndex; */
-        /*     /\* key at cursor loc greater than desired key*\/ */
-        /*     *pRes = 1; */
-        /* } */
-	/* -1 cannot be returned by findRecordIndex */
+	cursor->ancestorsIdx[level] = i;
 	
         if (node->entries[i].key == key) {
-            cursor->entryIndex = i;
-            cursor->nextAncestorPointerIdx[level] = cursor->entryIndex;
             /* key at cursor loc is same as desired key*/
-            *pRes = 0;
-        }  
-        else {
-            cursor->entryIndex = i;
-            cursor->nextAncestorPointerIdx[level] = cursor->entryIndex;
+	    return True;;
+        } else {
             /* key at cursor loc less than desired key*/
-            *pRes = -1;
+            return False;
         }
         
-        if (*pRes == 0) {
-            return True;
-        }
-        return False;
         
     } else {
         int i;
         BtNode* child;
         
         i = findChildIndex(node->entries, key, node->numKeys);
-        cursor->nextAncestorPointerIdx[level] = i;
+        cursor->ancestorsIdx[level] = i;
         
         if (i == -1) {
             child = node->ptr0;
@@ -1451,7 +1474,7 @@ static Bool moveToRecord(BtNode* node, unsigned long key, Cursor* cursor,
             child = node->entries[i].ptr.child;
         }
         
-        return moveToRecord(child, key, cursor, level + 1, pRes);
+        return moveToKey(child, key, cursor, level + 1);
     }
 }
 
@@ -1463,18 +1486,20 @@ static Bool moveToFirstRecord(BtNode* node, Cursor* cursor, int level) {
     
     /* Track ancestors as you go to first node*/
     cursor->ancestors[level] = node;
-    cursor->nextAncestorPointerIdx[level] = -1;
+    cursor->ancestorsIdx[level] = -1;
             
     if (node->isLeaf) {
         if (node->numKeys == 0) {
+	  /* A Leaf Node with no key can only be the root of an empty tree */
+	    cursor->ancestorsIdx[level] = 0;
+	    cursor->level = 0;
+	    cursor->isValid = False;
             return False;
         }
         
-        cursor->currNode = node;
-        cursor->entryIndex = 0;
-        cursor->nextAncestorPointerIdx[level] = 0;
+        cursor->ancestorsIdx[level] = 0;
         cursor->level = level;
-        
+        cursor->isValid = True;
         return True;
     }
     
